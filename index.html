@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Agenda">
+<meta name="theme-color" content="#35665F">
+<title>Agenda Studio</title>
+<style>
+  :root{
+    --bg:#F4F6F5;
+    --surface:#FFFFFF;
+    --border:#E2E6E4;
+    --text:#1C2422;
+    --text-soft:#66756F;
+    --accent:#35665F;
+    --accent-dark:#274E48;
+    --accent-soft:#E1ECE9;
+    --warn:#B4622E;
+    --warn-soft:#F6E6D9;
+    --danger:#A8433A;
+    --radius:12px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ height:100%; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size:15px;
+    overscroll-behavior-y: none;
+  }
+  button, input, select, textarea{ font-family:inherit; font-size:inherit; color:inherit; }
+  button{ cursor:pointer; }
+  .app-shell{
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    height:100dvh;
+    max-width:560px;
+    margin:0 auto;
+    background:var(--bg);
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* HEADER */
+  .app-header{
+    padding: calc(10px + var(--safe-top)) 16px 10px;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+  }
+  .birthday-banner{
+    display:none; align-items:center; justify-content:space-between; gap:10px;
+    background:#FCEBD9; color:#7A4A1D; padding:9px 16px; font-size:13px; font-weight:600;
+    border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .birthday-banner button{ background:none; border:none; font-size:19px; color:#7A4A1D; line-height:1; padding:0 2px; flex-shrink:0; }
+  .appt-age{ font-size:11.5px; color:var(--text-soft); font-weight:500; white-space:nowrap; flex-shrink:0; }
+  .app-title{ font-size:17px; font-weight:600; margin:0 0 10px; }
+  .period-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; }
+  .period-nav{ display:flex; align-items:center; gap:4px; }
+  .icon-btn{
+    width:32px; height:32px; border-radius:50%; border:none; background:transparent;
+    display:flex; align-items:center; justify-content:center; color:var(--accent);
+  }
+  .icon-btn:active{ background:var(--accent-soft); }
+  .period-label{ font-size:16px; font-weight:600; min-width:150px; text-align:center; }
+  .today-btn{
+    border:1px solid var(--border); background:var(--surface); color:var(--accent);
+    border-radius:8px; padding:6px 10px; font-weight:600; font-size:13px;
+  }
+  .segmented{ display:flex; background:var(--bg); border-radius:9px; padding:3px; gap:2px; }
+  .seg-btn{
+    flex:1; border:none; background:transparent; padding:7px 0; border-radius:7px;
+    font-weight:600; font-size:13.5px; color:var(--text-soft);
+  }
+  .seg-btn.active{ background:var(--surface); color:var(--accent); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+
+  /* MAIN */
+  .app-main{ flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:24px; }
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* MONTH VIEW */
+  .month-weekdays{ display:grid; grid-template-columns:repeat(7,1fr); padding:10px 8px 4px; }
+  .month-weekdays span{ text-align:center; font-size:11.5px; color:var(--text-soft); font-weight:600; }
+  .month-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px; padding:0 8px 12px; }
+  .day-cell{
+    aspect-ratio:1/1; border-radius:9px; background:var(--surface); border:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:5px 2px;
+    position:relative;
+  }
+  .day-cell.outside{ opacity:.35; }
+  .day-cell.today{ border-color:var(--accent); border-width:1.5px; }
+  .day-cell.selected{ background:var(--accent); border-color:var(--accent); }
+  .day-cell.selected .num{ color:#fff; }
+  .day-cell .num{ font-size:13px; font-weight:600; }
+  .day-cell .dots{ display:flex; gap:2px; margin-top:4px; flex-wrap:wrap; justify-content:center; }
+  .dot{ width:5px; height:5px; border-radius:50%; background:var(--accent); }
+  .dot.skipped{ background:var(--warn); opacity:.6; }
+  .day-cell .more{ font-size:9px; color:var(--text-soft); margin-top:2px; }
+
+  /* WEEK VIEW */
+  .week-list{ padding:10px 12px; }
+  .week-row{ margin-bottom:14px; }
+  .week-row-head{ display:flex; align-items:baseline; gap:6px; padding:4px 4px 8px; }
+  .week-row-head .wd{ font-size:12.5px; font-weight:700; color:var(--text-soft); text-transform:capitalize; }
+  .week-row-head .dn{ font-size:15px; font-weight:600; }
+  .week-row-head.today .dn{ color:var(--accent); }
+  .week-row-empty{ font-size:12.5px; color:var(--text-soft); padding:0 4px 4px; }
+
+  /* APPT CARD */
+  .appt-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:10px 12px; margin-bottom:8px; display:flex; align-items:center; gap:10px;
+  }
+  .appt-time{ font-size:13px; font-weight:700; color:var(--accent); min-width:78px; line-height:1.25; }
+  .appt-card.skipped .appt-time{ color:var(--warn); }
+  .appt-body{ flex:1; min-width:0; }
+  .appt-name{ font-weight:600; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .appt-card.skipped .appt-name{ text-decoration:line-through; opacity:.6; }
+  .appt-meta{ font-size:12px; color:var(--text-soft); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .badge{
+    font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px; background:var(--warn-soft); color:var(--warn);
+    flex-shrink:0;
+  }
+  .badge.rec{ background:var(--accent-soft); color:var(--accent); }
+  .badge.val{ background:#EDE3F7; color:#6B4A94; }
+  .loc-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; display:inline-block; }
+  .appt-name-row{ display:flex; align-items:center; gap:6px; min-width:0; }
+  .loc-chip{
+    border:none; border-radius:20px; padding:8px 14px; font-size:13px; font-weight:600;
+    position:relative;
+  }
+  .loc-chip.selected{ box-shadow:0 0 0 2.5px var(--text) inset; }
+  .loc-chip-new{ background:var(--bg); color:var(--text-soft); border:1px dashed var(--border) !important; }
+  .loc-grid{ display:flex; flex-wrap:wrap; gap:8px; }
+  .color-swatches{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .color-swatch{ width:30px; height:30px; border-radius:50%; border:2px solid transparent; padding:0; }
+  .color-swatch.selected{ border-color:var(--text); }
+  .patient-loc-label{ display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text-soft); margin-top:2px; }
+
+  /* DAY VIEW */
+  .day-view-head{ padding:14px 16px 4px; font-size:15px; font-weight:600; text-transform:capitalize; }
+  .day-view-list{ padding:6px 12px 12px; }
+  .empty-state{ text-align:center; padding:40px 24px; color:var(--text-soft); font-size:13.5px; }
+
+  /* SUMMARY VIEW */
+  .summary-list{ padding:6px 14px 20px; }
+  .summary-row{
+    display:flex; align-items:center; justify-content:space-between; padding:11px 4px; border-bottom:1px solid var(--border);
+  }
+  .summary-row .pname{ font-weight:600; font-size:14.5px; }
+  .summary-row .pcount{ font-weight:700; color:var(--accent); font-size:14.5px; }
+  .summary-total{
+    display:flex; justify-content:space-between; padding:14px 4px 4px; font-weight:700; font-size:15px; margin-top:6px;
+  }
+  .summary-section-title{ font-size:12.5px; font-weight:700; color:var(--text-soft); padding:16px 4px 6px; }
+  .absence-row{ display:flex; justify-content:space-between; padding:8px 4px; font-size:13px; color:var(--text-soft); border-bottom:1px solid var(--border); }
+  .absence-row b{ color:var(--text); font-weight:600; }
+
+  /* PATIENTS VIEW */
+  .patients-search{ padding:12px 14px 6px; }
+  .patients-search input{
+    width:100%; border:1px solid var(--border); background:var(--surface); border-radius:9px; padding:9px 12px;
+  }
+  .patients-list{ padding:6px 14px 20px; }
+  .patient-row{
+    display:flex; align-items:center; justify-content:space-between; padding:11px 4px; border-bottom:1px solid var(--border); gap:8px;
+  }
+  .patient-row .name-block{ flex:1; min-width:0; }
+  .patient-row .name{ font-weight:600; font-size:14.5px; }
+  .small-btn{
+    border:1px solid var(--border); background:var(--surface); border-radius:7px; padding:5px 9px; font-size:12.5px; font-weight:600;
+  }
+  .small-btn.danger{ color:var(--danger); border-color:var(--danger); }
+  .add-patient-row{ padding:10px 4px 4px; }
+  .add-patient-row button{
+    width:100%; background:var(--accent-soft); color:var(--accent); border:none; border-radius:9px; padding:11px; font-weight:700;
+  }
+  .backup-section{ margin-top:18px; padding-top:14px; border-top:1px solid var(--border); }
+  .backup-section-title{ font-size:12.5px; font-weight:700; color:var(--text-soft); padding:0 4px 8px; }
+  .backup-row{ display:flex; gap:8px; }
+  .backup-row button{
+    flex:1; border:1px solid var(--border); background:var(--surface); color:var(--accent); border-radius:9px; padding:10px; font-weight:600; font-size:13px;
+  }
+  .filter-toggle{
+    width:100%; margin-top:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-soft);
+    border-radius:9px; padding:9px; font-weight:600; font-size:13px;
+  }
+  .filter-toggle.active{ background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  /* TAB BAR */
+  .tabbar{
+    display:flex; background:var(--surface); border-top:1px solid var(--border);
+    padding: 6px 8px calc(6px + var(--safe-bottom));
+    flex-shrink:0;
+  }
+  .tab-btn{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:none;
+    padding:4px 0; color:var(--text-soft); font-size:11px; font-weight:600;
+  }
+  .tab-btn.active{ color:var(--accent); }
+  .tab-btn svg{ width:22px; height:22px; }
+
+  /* FAB */
+  .fab{
+    position:absolute; right:18px; bottom:0; width:54px; height:54px; border-radius:50%;
+    background:var(--accent); color:#fff; border:none; font-size:28px; line-height:1;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(53,102,95,.4);
+    transform:translateY(-72px); z-index:5;
+  }
+  .fab:active{ background:var(--accent-dark); }
+
+  /* MODAL */
+  .overlay{
+    position:fixed; inset:0; background:rgba(20,26,24,.42); display:none; align-items:flex-end; z-index:20;
+    max-width:560px; margin:0 auto;
+  }
+  .overlay.open{ display:flex; }
+  .sheet{
+    background:var(--bg); width:100%; max-height:92%; border-radius:18px 18px 0 0; display:flex; flex-direction:column;
+    overflow:hidden;
+  }
+  .sheet-handle{ display:flex; justify-content:center; padding:8px 0 2px; }
+  .sheet-handle span{ width:36px; height:4px; border-radius:3px; background:var(--border); display:block; }
+  .sheet-header{ display:flex; align-items:center; justify-content:space-between; padding:6px 16px 10px; }
+  .sheet-header h2{ font-size:16px; margin:0; }
+  .sheet-close{ background:none; border:none; font-size:20px; color:var(--text-soft); width:28px; height:28px; }
+  .sheet-body{ overflow-y:auto; padding:4px 16px 16px; }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12.5px; font-weight:700; color:var(--text-soft); margin-bottom:6px; }
+  .field input[type=text], .field input[type=date], .field input[type=time], .field select, .field textarea{
+    width:100%; border:1px solid var(--border); background:var(--surface); border-radius:9px; padding:10px 12px;
+  }
+  .field textarea{ resize:vertical; min-height:52px; }
+  .time-row{ display:flex; gap:10px; }
+  .time-row .field{ flex:1; }
+  .quick-durations{ display:flex; gap:8px; margin-top:8px; }
+  .quick-durations button{
+    flex:1; border:1px solid var(--border); background:var(--surface); border-radius:8px; padding:7px 0; font-size:12.5px; font-weight:600; color:var(--accent);
+  }
+  .suggestions{
+    border:1px solid var(--border); border-radius:9px; margin-top:4px; overflow:hidden; background:var(--surface); display:none;
+  }
+  .suggestions.open{ display:block; }
+  .suggestion-item{ padding:10px 12px; font-size:14px; border-bottom:1px solid var(--border); }
+  .suggestion-item:last-child{ border-bottom:none; }
+  .suggestion-item.new{ color:var(--accent); font-weight:600; }
+  .suggest-strip{
+    display:none; align-items:center; justify-content:space-between; background:var(--accent-soft); color:var(--accent-dark);
+    border-radius:9px; padding:9px 12px; font-size:13px; margin-top:8px; margin-bottom:2px;
+  }
+  .suggest-strip.open{ display:flex; }
+  .suggest-strip button{ background:var(--accent); color:#fff; border:none; border-radius:7px; padding:5px 10px; font-weight:700; font-size:12px; }
+  .weekday-hint{ font-size:12px; color:var(--text-soft); margin-top:6px; }
+  .save-btn{
+    width:100%; background:var(--accent); color:#fff; border:none; border-radius:11px; padding:13px; font-weight:700; font-size:15px; margin-top:6px;
+  }
+  .save-btn:active{ background:var(--accent-dark); }
+  .modal-actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .modal-actions button{
+    flex:1; min-width:120px; border-radius:9px; padding:10px; font-weight:600; font-size:13px; border:1px solid var(--border); background:var(--surface);
+  }
+  .modal-actions .warn-btn{ color:var(--warn); border-color:var(--warn); }
+  .modal-actions .danger-btn{ color:var(--danger); border-color:var(--danger); }
+  .hint-box{ font-size:12px; color:var(--text-soft); background:var(--surface); border:1px solid var(--border); border-radius:9px; padding:9px 11px; margin-bottom:14px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- HEADER -->
+  <div class="app-header">
+    <div id="headerTitle" class="app-title">Agenda</div>
+
+    <div id="agendaControls">
+      <div class="period-row">
+        <div class="period-nav">
+          <button class="icon-btn" id="prevBtn">&#8249;</button>
+          <div class="period-label" id="periodLabel">—</div>
+          <button class="icon-btn" id="nextBtn">&#8250;</button>
+        </div>
+        <button class="today-btn" id="todayBtn">Oggi</button>
+      </div>
+      <div class="segmented" id="viewSeg">
+        <button class="seg-btn" data-view="day">Giorno</button>
+        <button class="seg-btn" data-view="week">Settimana</button>
+        <button class="seg-btn active" data-view="month">Mese</button>
+      </div>
+    </div>
+
+    <div id="summaryControls" style="display:none;">
+      <div class="period-row" style="margin-bottom:10px;">
+        <div class="period-nav">
+          <button class="icon-btn" id="summaryPrevBtn">&#8249;</button>
+          <div class="period-label" id="summaryPeriodLabel">—</div>
+          <button class="icon-btn" id="summaryNextBtn">&#8250;</button>
+        </div>
+        <div style="width:52px;"></div>
+      </div>
+      <div class="segmented" id="summaryModeSeg">
+        <button class="seg-btn active" data-mode="patient">Per paziente</button>
+        <button class="seg-btn" data-mode="location">Per luogo</button>
+      </div>
+      <button type="button" class="filter-toggle" id="invoiceFilterBtn">☐ Mostra solo da fatturare</button>
+    </div>
+  </div>
+
+  <div class="birthday-banner" id="birthdayBanner"></div>
+
+  <!-- MAIN -->
+  <div class="app-main">
+
+    <div class="view" id="view-month">
+      <div class="month-weekdays">
+        <span>L</span><span>M</span><span>M</span><span>G</span><span>V</span><span>S</span><span>D</span>
+      </div>
+      <div class="month-grid" id="monthGrid"></div>
+    </div>
+
+    <div class="view" id="view-week">
+      <div class="week-list" id="weekList"></div>
+    </div>
+
+    <div class="view" id="view-day">
+      <div class="day-view-head" id="dayViewHead"></div>
+      <div class="day-view-list" id="dayViewList"></div>
+    </div>
+
+    <div class="view" id="view-summary">
+      <div class="summary-list" id="summaryList"></div>
+    </div>
+
+    <div class="view" id="view-patients">
+      <div class="patients-search">
+        <input type="text" id="patientSearchInput" placeholder="Cerca paziente...">
+      </div>
+      <div class="patients-list" id="patientsList"></div>
+    </div>
+
+  </div>
+
+  <button class="fab" id="fabAdd">+</button>
+
+  <!-- TAB BAR -->
+  <div class="tabbar">
+    <button class="tab-btn active" data-tab="agenda">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 3v4"/><path d="M16 3v4"/></svg>
+      Agenda
+    </button>
+    <button class="tab-btn" data-tab="summary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10"/><path d="M12 20V4"/><path d="M20 20v-7"/></svg>
+      Riepilogo
+    </button>
+    <button class="tab-btn" data-tab="patients">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16.5 4.8c1.6.4 2.8 1.8 2.8 3.5 0 1.7-1.2 3.1-2.8 3.5"/><path d="M18 14.3c2.2.5 3.8 2.2 3.8 4.5"/></svg>
+      Pazienti
+    </button>
+  </div>
+</div>
+
+<!-- MODAL: ADD/EDIT APPOINTMENT -->
+<div class="overlay" id="apptOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"><span></span></div>
+    <div class="sheet-header">
+      <h2 id="apptModalTitle">Nuovo appuntamento</h2>
+      <button class="sheet-close" id="apptModalClose">&times;</button>
+    </div>
+    <div class="sheet-body">
+
+      <div class="field">
+        <label>Paziente</label>
+        <input type="text" id="patientInput" autocomplete="off" placeholder="Cerca o aggiungi paziente...">
+        <div class="suggestions" id="patientSuggestions"></div>
+        <div class="suggest-strip" id="suggestStrip">
+          <span id="suggestStripText"></span>
+          <button type="button" id="suggestStripUse">Usa</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Data</label>
+        <input type="date" id="apptDate">
+      </div>
+
+      <div class="field">
+        <label>Orario</label>
+        <div class="time-row">
+          <div class="field" style="margin-bottom:0;">
+            <label style="font-weight:500;">dalle</label>
+            <input type="time" id="apptStart" value="09:00">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label style="font-weight:500;">alle</label>
+            <input type="time" id="apptEnd" value="09:45">
+          </div>
+        </div>
+        <div class="quick-durations">
+          <button type="button" data-min="30">30 min</button>
+          <button type="button" data-min="45">45 min</button>
+          <button type="button" data-min="60">60 min</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Ripetizione</label>
+        <div class="segmented" id="recurrenceSeg">
+          <button type="button" class="seg-btn active" data-val="none">Singolo</button>
+          <button type="button" class="seg-btn" data-val="weekly">Ogni settimana</button>
+        </div>
+        <div class="weekday-hint" id="weekdayHint"></div>
+      </div>
+
+      <div class="field" id="recurrenceEndField" style="display:none;">
+        <label>Fino a</label>
+        <select id="recurrenceEndSelect">
+          <option value="endOfMonth">Fine mese corrente</option>
+          <option value="none">Nessuna scadenza</option>
+          <option value="custom">Data specifica</option>
+        </select>
+        <input type="date" id="recurrenceEndDate" style="display:none; margin-top:8px;">
+      </div>
+
+      <div class="field">
+        <label>Tipo seduta</label>
+        <div class="segmented" id="sessionTypeSeg">
+          <button type="button" class="seg-btn active" data-val="trattamento">Trattamento</button>
+          <button type="button" class="seg-btn" data-val="valutazione">Valutazione</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Note (facoltativo)</label>
+        <textarea id="apptNotes"></textarea>
+      </div>
+
+      <div class="hint-box" id="editHintBox" style="display:none;">
+        Le modifiche a orario, luogo e note si applicano a tutte le occorrenze di questa serie.
+      </div>
+
+      <button class="save-btn" id="apptSaveBtn">Salva appuntamento</button>
+
+      <div class="modal-actions" id="editActions" style="display:none;">
+        <button type="button" class="warn-btn" id="toggleSkipBtn">Segna come non venuto</button>
+        <button type="button" id="togglePaymentBtn">Segna come pagato in contanti</button>
+        <button type="button" id="duplicateBtn">Duplica su altre date</button>
+        <button type="button" id="deleteOccurrenceBtn">Elimina questa data</button>
+        <button type="button" id="stopRecurrenceBtn" style="display:none;">Interrompi da questa data (mantiene lo storico)</button>
+        <button type="button" class="danger-btn" id="deleteSeriesBtn" style="display:none;">Elimina intera serie (anche lo storico)</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: NEW/EDIT PATIENT -->
+<div class="overlay" id="patientOverlay" style="z-index:30;">
+  <div class="sheet">
+    <div class="sheet-handle"><span></span></div>
+    <div class="sheet-header">
+      <h2 id="patientModalTitle">Nuovo paziente</h2>
+      <button class="sheet-close" id="patientModalClose">&times;</button>
+    </div>
+    <div class="sheet-body">
+      <div class="field">
+        <label>Nome</label>
+        <input type="text" id="patientNameInput" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Data di nascita (facoltativa)</label>
+        <input type="date" id="patientDobInput">
+      </div>
+      <div class="field">
+        <label>Luogo</label>
+        <div class="loc-grid" id="locGrid"></div>
+      </div>
+      <div class="field" id="newLocForm" style="display:none;">
+        <label>Nuovo luogo</label>
+        <input type="text" id="newLocName" placeholder="Nome del luogo" style="margin-bottom:10px;">
+        <div class="color-swatches" id="colorSwatches"></div>
+        <input type="color" id="newLocColorCustom" value="#7C9885" style="width:100%; height:38px; border:1px solid var(--border); border-radius:9px; padding:2px;">
+        <button type="button" class="small-btn" id="addLocConfirmBtn" style="width:100%; margin-top:10px; padding:9px;">Aggiungi luogo</button>
+      </div>
+      <button class="save-btn" id="savePatientBtn">Salva paziente</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DUPLICATE APPOINTMENT -->
+<div class="overlay" id="duplicateOverlay" style="z-index:25;">
+  <div class="sheet">
+    <div class="sheet-handle"><span></span></div>
+    <div class="sheet-header">
+      <h2 id="duplicateModalTitle">Duplica appuntamento</h2>
+      <button class="sheet-close" id="duplicateModalClose">&times;</button>
+    </div>
+    <div class="sheet-body">
+      <div class="hint-box" id="duplicateInfoBox"></div>
+      <div class="period-row" style="margin-bottom:8px;">
+        <div class="period-nav">
+          <button class="icon-btn" id="dupPrevBtn">&#8249;</button>
+          <div class="period-label" id="dupPeriodLabel">—</div>
+          <button class="icon-btn" id="dupNextBtn">&#8250;</button>
+        </div>
+      </div>
+      <div class="month-weekdays">
+        <span>L</span><span>M</span><span>M</span><span>G</span><span>V</span><span>S</span><span>D</span>
+      </div>
+      <div class="month-grid" id="dupMonthGrid"></div>
+      <div style="font-size:12px; color:var(--text-soft); padding:8px 4px 0;">Tocca i giorni su cui copiare l'appuntamento. Puoi selezionarne più di uno, anche su mesi diversi.</div>
+      <button class="save-btn" id="dupConfirmBtn" style="margin-top:14px;">Duplica</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var STORAGE_KEY = 'agendaClinicaData_v1';
+  var WEEKDAY_NAMES = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
+  var WEEKDAY_SHORT = ['dom','lun','mar','mer','gio','ven','sab'];
+  var MONTH_NAMES = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+
+  // ---------- STATE ----------
+  function defaultLocations(){
+    return [
+      { id: uid('loc'), name: 'Concorezzo', color: '#C9A0DC' },
+      { id: uid('loc'), name: 'Asilo Ornago', color: '#F4A6C6' },
+      { id: uid('loc'), name: 'Osio', color: '#F5D547' },
+      { id: uid('loc'), name: 'San Donato', color: '#DC5B52' },
+      { id: uid('loc'), name: 'A Casa Tua', color: '#5FBBAE' },
+      { id: uid('loc'), name: 'Privati', color: '#E8954E' }
+    ];
+  }
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
+        if (!parsed.patients) parsed.patients = [];
+        if (!parsed.series) parsed.series = [];
+        if (!parsed.exceptions) parsed.exceptions = {};
+        if (!parsed.payments) parsed.payments = {};
+        if (!parsed.locations || !parsed.locations.length) parsed.locations = defaultLocations();
+        return parsed;
+      }
+    }catch(e){}
+    return { patients: [], series: [], exceptions: {}, payments: {}, locations: defaultLocations() };
+  }
+  var state = loadState();
+  function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+  function uid(prefix){ return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function getContrastColor(hex){
+    var c = (hex||'#888888').replace('#','');
+    if (c.length === 3) c = c.split('').map(function(ch){ return ch+ch; }).join('');
+    var r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+    var yiq = (r*299 + g*587 + b*114) / 1000;
+    return yiq >= 150 ? '#2b2b2b' : '#ffffff';
+  }
+  function getLocationById(id){ return state.locations.find(function(l){ return l.id === id; }); }
+  function patientLocation(patientId){
+    var p = state.patients.find(function(x){ return x.id === patientId; });
+    return (p && p.locationId) ? getLocationById(p.locationId) : null;
+  }
+
+  // ---------- DATE HELPERS ----------
+  function pad(n){ return n < 10 ? '0'+n : ''+n; }
+  function toISO(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function parseISO(iso){ var p = iso.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
+  function addDays(d, n){ var r = new Date(d); r.setDate(r.getDate()+n); return r; }
+  function sameDate(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+  function startOfWeek(d){ var r = new Date(d); var day = (r.getDay()+6)%7; r.setDate(r.getDate()-day); return r; }
+  function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+  function todayDate(){ var t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
+
+  function ageYearsMonths(dobIso, ref){
+    var dob = parseISO(dobIso);
+    var years = ref.getFullYear() - dob.getFullYear();
+    var months = ref.getMonth() - dob.getMonth();
+    if (ref.getDate() < dob.getDate()) months--;
+    if (months < 0){ years--; months += 12; }
+    if (years < 0) return null;
+    return { years: years, months: months };
+  }
+  function formatAge(a){
+    if (!a) return '';
+    var parts = [];
+    if (a.years > 0) parts.push(a.years + (a.years===1?' anno':' anni'));
+    if (a.months > 0 || a.years === 0) parts.push(a.months + (a.months===1?' mese':' mesi'));
+    return parts.join(' e ');
+  }
+  function patientAgeLabel(patientId){
+    var p = state.patients.find(function(x){ return x.id === patientId; });
+    if (!p || !p.dob) return '';
+    var a = ageYearsMonths(p.dob, todayDate());
+    return a ? formatAge(a) : '';
+  }
+
+  // ---------- OCCURRENCE GENERATION ----------
+  function seriesOccurrencesInRange(s, rangeStart, rangeEnd){
+    var out = [];
+    var start = parseISO(s.startDate);
+    if (s.recurrence === 'none'){
+      if (start >= rangeStart && start <= rangeEnd) out.push(new Date(start));
+      return out;
+    }
+    var limit = null;
+    if (s.recurrenceEnd === 'endOfMonth') limit = endOfMonth(start);
+    else if (s.recurrenceEnd && s.recurrenceEnd !== 'none') limit = parseISO(s.recurrenceEnd);
+    var cursor = new Date(start);
+    var guard = 0;
+    while (cursor <= rangeEnd && (!limit || cursor <= limit) && guard < 400){
+      if (cursor >= rangeStart) out.push(new Date(cursor));
+      cursor = addDays(cursor, 7);
+      guard++;
+    }
+    return out;
+  }
+
+  function allOccurrencesInRange(rangeStart, rangeEnd){
+    var list = [];
+    state.series.forEach(function(s){
+      seriesOccurrencesInRange(s, rangeStart, rangeEnd).forEach(function(date){
+        var iso = toISO(date);
+        var key = s.id + '_' + iso;
+        var exc = state.exceptions[key];
+        if (exc && exc.status === 'deleted') return;
+        list.push({
+          seriesId: s.id, date: iso, dateObj: date, patientId: s.patientId,
+          startTime: s.startTime, endTime: s.endTime, notes: s.notes,
+          sessionType: s.sessionType || 'trattamento',
+          payment: state.payments[s.id + '_' + iso] || 'fattura',
+          skipped: !!(exc && exc.status === 'skipped'), recurrence: s.recurrence
+        });
+      });
+    });
+    list.sort(function(a,b){
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return a.startTime.localeCompare(b.startTime);
+    });
+    return list;
+  }
+
+  function patientName(id){
+    var p = state.patients.find(function(x){ return x.id === id; });
+    return p ? p.name : '—';
+  }
+
+  // ---------- OVERLAP CHECK ----------
+  function timeToMinutes(t){ var p = t.split(':').map(Number); return p[0]*60 + p[1]; }
+  function timesOverlap(aStart, aEnd, bStart, bEnd){
+    return timeToMinutes(aStart) < timeToMinutes(bEnd) && timeToMinutes(bStart) < timeToMinutes(aEnd);
+  }
+  // Returns the first conflicting occurrence (date + who) between `candidate` (a series-like object,
+  // not yet saved) and every other existing series, or null if the slot is free.
+  function findConflict(candidate, excludeSeriesId){
+    var rangeStart = parseISO(candidate.startDate);
+    var rangeEnd;
+    if (candidate.recurrence === 'none') rangeEnd = rangeStart;
+    else if (candidate.recurrenceEnd === 'endOfMonth') rangeEnd = endOfMonth(rangeStart);
+    else if (candidate.recurrenceEnd === 'none') rangeEnd = addDays(rangeStart, 400*7);
+    else rangeEnd = parseISO(candidate.recurrenceEnd);
+
+    var candDates = seriesOccurrencesInRange(candidate, rangeStart, rangeEnd);
+    if (!candDates.length) return null;
+
+    var othersByDate = {};
+    state.series.forEach(function(other){
+      if (other.id === excludeSeriesId) return;
+      seriesOccurrencesInRange(other, rangeStart, rangeEnd).forEach(function(d){
+        var iso = toISO(d);
+        var exc = state.exceptions[other.id + '_' + iso];
+        if (exc && exc.status === 'deleted') return;
+        (othersByDate[iso] = othersByDate[iso] || []).push(other);
+      });
+    });
+
+    for (var i=0;i<candDates.length;i++){
+      var iso = toISO(candDates[i]);
+      var list = othersByDate[iso];
+      if (!list) continue;
+      for (var j=0;j<list.length;j++){
+        if (timesOverlap(candidate.startTime, candidate.endTime, list[j].startTime, list[j].endTime)){
+          return { date: iso, otherPatientId: list[j].patientId, otherStart: list[j].startTime, otherEnd: list[j].endTime };
+        }
+      }
+    }
+    return null;
+  }
+
+  // ---------- APP NAV STATE ----------
+  var activeTab = 'agenda';
+  var agendaView = 'month';
+  var agendaFocus = todayDate();
+  var summaryFocus = todayDate();
+  var editingSeriesId = null;
+  var editingDate = null;
+  var pickedPatientId = null;
+
+  // ---------- ELEMENTS ----------
+  var el = {};
+  ['headerTitle','agendaControls','summaryControls','periodLabel','summaryPeriodLabel',
+   'prevBtn','nextBtn','summaryPrevBtn','summaryNextBtn','todayBtn','viewSeg','summaryModeSeg','invoiceFilterBtn',
+   'monthGrid','weekList','dayViewHead','dayViewList','summaryList',
+   'patientSearchInput','patientsList','fabAdd',
+   'apptOverlay','apptModalTitle','apptModalClose','patientInput','patientSuggestions',
+   'suggestStrip','suggestStripText','suggestStripUse','apptDate','apptStart','apptEnd',
+   'recurrenceSeg','recurrenceEndField','recurrenceEndSelect','recurrenceEndDate',
+   'weekdayHint','sessionTypeSeg','apptNotes','editHintBox','apptSaveBtn','editActions',
+   'toggleSkipBtn','togglePaymentBtn','duplicateBtn','deleteOccurrenceBtn','stopRecurrenceBtn','deleteSeriesBtn',
+   'patientOverlay','patientModalTitle','patientModalClose','patientNameInput','patientDobInput','locGrid',
+   'newLocForm','newLocName','colorSwatches','newLocColorCustom','addLocConfirmBtn','savePatientBtn',
+   'birthdayBanner',
+   'duplicateOverlay','duplicateModalTitle','duplicateModalClose','duplicateInfoBox',
+   'dupPrevBtn','dupNextBtn','dupPeriodLabel','dupMonthGrid','dupConfirmBtn'
+  ].forEach(function(id){ el[id] = document.getElementById(id); });
+
+  // ---------- TAB SWITCHING ----------
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      activeTab = btn.getAttribute('data-tab');
+      showTab(activeTab);
+    });
+  });
+  function showTab(tab){
+    ['month','week','day','summary','patients'].forEach(function(v){
+      document.getElementById('view-'+v).classList.remove('active');
+    });
+    el.fabAdd.style.display = (tab === 'agenda') ? 'flex' : 'none';
+    el.agendaControls.style.display = (tab === 'agenda') ? 'block' : 'none';
+    el.summaryControls.style.display = (tab === 'summary') ? 'block' : 'none';
+    if (tab === 'agenda'){
+      el.headerTitle.textContent = 'Agenda';
+      document.getElementById('view-'+agendaView).classList.add('active');
+      renderAgenda();
+    } else if (tab === 'summary'){
+      el.headerTitle.textContent = 'Riepilogo mensile';
+      document.getElementById('view-summary').classList.add('active');
+      renderSummary();
+    } else {
+      el.headerTitle.textContent = 'Pazienti';
+      document.getElementById('view-patients').classList.add('active');
+      renderPatients();
+    }
+  }
+
+  // ---------- AGENDA VIEW SEGMENT ----------
+  el.viewSeg.querySelectorAll('.seg-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      el.viewSeg.querySelectorAll('.seg-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      agendaView = btn.getAttribute('data-view');
+      document.querySelectorAll('#view-month,#view-week,#view-day').forEach(function(v){ v.classList.remove('active'); });
+      document.getElementById('view-'+agendaView).classList.add('active');
+      renderAgenda();
+    });
+  });
+  function setAgendaView(view, focusDate){
+    agendaView = view;
+    if (focusDate) agendaFocus = focusDate;
+    el.viewSeg.querySelectorAll('.seg-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-view') === view);
+    });
+    document.querySelectorAll('#view-month,#view-week,#view-day').forEach(function(v){ v.classList.remove('active'); });
+    document.getElementById('view-'+view).classList.add('active');
+    renderAgenda();
+  }
+
+  el.prevBtn.addEventListener('click', function(){ navigatePeriod(-1); });
+  el.nextBtn.addEventListener('click', function(){ navigatePeriod(1); });
+  el.todayBtn.addEventListener('click', function(){ agendaFocus = todayDate(); renderAgenda(); });
+  function navigatePeriod(dir){
+    if (agendaView === 'month'){
+      agendaFocus = new Date(agendaFocus.getFullYear(), agendaFocus.getMonth()+dir, 1);
+    } else if (agendaView === 'week'){
+      agendaFocus = addDays(agendaFocus, 7*dir);
+    } else {
+      agendaFocus = addDays(agendaFocus, dir);
+    }
+    renderAgenda();
+  }
+
+  el.summaryPrevBtn.addEventListener('click', function(){
+    summaryFocus = new Date(summaryFocus.getFullYear(), summaryFocus.getMonth()-1, 1);
+    renderSummary();
+  });
+  el.summaryNextBtn.addEventListener('click', function(){
+    summaryFocus = new Date(summaryFocus.getFullYear(), summaryFocus.getMonth()+1, 1);
+    renderSummary();
+  });
+
+  // ---------- RENDER: AGENDA ----------
+  function renderAgenda(){
+    if (agendaView === 'month') renderMonth();
+    else if (agendaView === 'week') renderWeek();
+    else renderDay();
+  }
+
+  function renderMonth(){
+    var y = agendaFocus.getFullYear(), m = agendaFocus.getMonth();
+    el.periodLabel.textContent = MONTH_NAMES[m] + ' ' + y;
+    var first = new Date(y, m, 1);
+    var gridStart = startOfWeek(first);
+    var last = endOfMonth(first);
+    var gridEnd = startOfWeek(last);
+    gridEnd = addDays(gridEnd, 6);
+    var occ = allOccurrencesInRange(gridStart, gridEnd);
+    var byDate = {};
+    occ.forEach(function(o){ (byDate[o.date] = byDate[o.date] || []).push(o); });
+
+    var html = '';
+    var cursor = new Date(gridStart);
+    var today = todayDate();
+    while (cursor <= gridEnd){
+      var iso = toISO(cursor);
+      var isOutside = cursor.getMonth() !== m;
+      var isToday = sameDate(cursor, today);
+      var dayOcc = byDate[iso] || [];
+      var dotsHtml = '';
+      var shown = dayOcc.slice(0,4);
+      shown.forEach(function(o){
+        var loc = patientLocation(o.patientId);
+        var col = o.skipped ? 'var(--warn)' : (loc ? loc.color : 'var(--accent)');
+        dotsHtml += '<span class="dot" style="background:'+col+'"></span>';
+      });
+      var moreHtml = dayOcc.length > 4 ? '<div class="more">+'+(dayOcc.length-4)+'</div>' : '';
+      html += '<div class="day-cell'+(isOutside?' outside':'')+(isToday?' today':'')+'" data-date="'+iso+'">'+
+                '<div class="num">'+cursor.getDate()+'</div>'+
+                '<div class="dots">'+dotsHtml+'</div>'+ moreHtml +
+              '</div>';
+      cursor = addDays(cursor, 1);
+    }
+    el.monthGrid.innerHTML = html;
+    el.monthGrid.querySelectorAll('.day-cell').forEach(function(cell){
+      cell.addEventListener('click', function(){
+        setAgendaView('day', parseISO(cell.getAttribute('data-date')));
+      });
+    });
+  }
+
+  function renderWeek(){
+    var wStart = startOfWeek(agendaFocus);
+    var wEnd = addDays(wStart, 6);
+    el.periodLabel.textContent = wStart.getDate()+' '+MONTH_NAMES[wStart.getMonth()].slice(0,3)+' – '+wEnd.getDate()+' '+MONTH_NAMES[wEnd.getMonth()].slice(0,3);
+    var occ = allOccurrencesInRange(wStart, wEnd);
+    var byDate = {};
+    occ.forEach(function(o){ (byDate[o.date] = byDate[o.date] || []).push(o); });
+    var today = todayDate();
+    var html = '';
+    for (var i=0;i<7;i++){
+      var d = addDays(wStart, i);
+      var iso = toISO(d);
+      var isToday = sameDate(d, today);
+      var dayOcc = byDate[iso] || [];
+      html += '<div class="week-row">'+
+                '<div class="week-row-head'+(isToday?' today':'')+' " data-date="'+iso+'">'+
+                  '<span class="wd">'+WEEKDAY_NAMES[d.getDay()]+'</span><span class="dn">'+d.getDate()+'</span>'+
+                '</div>';
+      if (!dayOcc.length){
+        html += '<div class="week-row-empty">Nessun appuntamento</div>';
+      } else {
+        dayOcc.forEach(function(o){ html += apptCardHtml(o); });
+      }
+      html += '</div>';
+    }
+    el.weekList.innerHTML = html;
+    bindApptCards(el.weekList);
+    el.weekList.querySelectorAll('.week-row-head').forEach(function(h){
+      h.addEventListener('click', function(){ setAgendaView('day', parseISO(h.getAttribute('data-date'))); });
+    });
+  }
+
+  function renderDay(){
+    var d = agendaFocus;
+    el.periodLabel.textContent = d.getDate()+' '+MONTH_NAMES[d.getMonth()]+' '+d.getFullYear();
+    el.dayViewHead.textContent = WEEKDAY_NAMES[d.getDay()]+' '+d.getDate()+' '+MONTH_NAMES[d.getMonth()];
+    var occ = allOccurrencesInRange(d, d);
+    if (!occ.length){
+      el.dayViewList.innerHTML = '<div class="empty-state">Nessun appuntamento in questo giorno.<br>Tocca + per aggiungerne uno.</div>';
+      return;
+    }
+    var html = '';
+    occ.forEach(function(o){ html += apptCardHtml(o); });
+    el.dayViewList.innerHTML = html;
+    bindApptCards(el.dayViewList);
+  }
+
+  function apptCardHtml(o){
+    var loc = patientLocation(o.patientId);
+    var dotColor = loc ? loc.color : '#C7CDC9';
+    var ageLabel = patientAgeLabel(o.patientId);
+    var metaParts = [];
+    if (o.recurrence === 'weekly') metaParts.push('Ricorrente');
+    if (loc) metaParts.push(loc.name);
+    if (o.payment === 'contanti') metaParts.push('Contanti');
+    var meta = metaParts.join(' · ');
+    var badge = '';
+    if (o.skipped) badge = '<span class="badge">Non venuto</span>';
+    else if (o.sessionType === 'valutazione') badge = '<span class="badge val">Valutazione</span>';
+    else if (o.recurrence === 'weekly') badge = '<span class="badge rec">Ricorrente</span>';
+    return '<div class="appt-card'+(o.skipped?' skipped':'')+'" data-series="'+o.seriesId+'" data-date="'+o.date+'">'+
+        '<div class="appt-time">'+o.startTime+'<br>'+o.endTime+'</div>'+
+        '<div class="appt-body">'+
+          '<div class="appt-name-row"><span class="loc-dot" style="background:'+dotColor+'"></span><span class="appt-name">'+escapeHtml(patientName(o.patientId))+'</span>'+
+          (ageLabel ? '<span class="appt-age">'+ageLabel+'</span>' : '') +
+          '</div>'+
+          (meta ? '<div class="appt-meta">'+escapeHtml(meta)+'</div>' : '') +
+        '</div>'+
+        badge +
+      '</div>';
+  }
+  function bindApptCards(container){
+    container.querySelectorAll('.appt-card').forEach(function(card){
+      card.addEventListener('click', function(){
+        openEditModal(card.getAttribute('data-series'), card.getAttribute('data-date'));
+      });
+    });
+  }
+
+  // ---------- RENDER: SUMMARY ----------
+  var summaryMode = 'patient';
+  var invoiceFilterOn = false;
+  el.summaryModeSeg.querySelectorAll('.seg-btn').forEach(function(b){
+    b.addEventListener('click', function(){
+      el.summaryModeSeg.querySelectorAll('.seg-btn').forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      summaryMode = b.getAttribute('data-mode');
+      renderSummary();
+    });
+  });
+  el.invoiceFilterBtn.addEventListener('click', function(){
+    invoiceFilterOn = !invoiceFilterOn;
+    el.invoiceFilterBtn.classList.toggle('active', invoiceFilterOn);
+    el.invoiceFilterBtn.textContent = (invoiceFilterOn ? '☑' : '☐') + ' Mostra solo da fatturare';
+    renderSummary();
+  });
+
+  function renderSummary(){
+    var y = summaryFocus.getFullYear(), m = summaryFocus.getMonth();
+    el.summaryPeriodLabel.textContent = MONTH_NAMES[m] + ' ' + y;
+    var rangeStart = new Date(y, m, 1);
+    var rangeEnd = endOfMonth(rangeStart);
+    var occ = allOccurrencesInRange(rangeStart, rangeEnd);
+    if (invoiceFilterOn) occ = occ.filter(function(o){ return o.payment !== 'contanti'; });
+    if (summaryMode === 'location') renderSummaryByLocation(occ);
+    else renderSummaryByPatient(occ);
+  }
+
+  function renderSummaryByPatient(occ){
+    var counts = {};
+    occ.forEach(function(o){
+      if (!counts[o.patientId]) counts[o.patientId] = { trattamento:0, valutazione:0, skippedList:[] };
+      if (o.skipped) counts[o.patientId].skippedList.push(o);
+      else if (o.sessionType === 'valutazione') counts[o.patientId].valutazione++;
+      else counts[o.patientId].trattamento++;
+    });
+    var patientIds = Object.keys(counts).filter(function(pid){
+      var c = counts[pid];
+      return c.trattamento > 0 || c.valutazione > 0 || c.skippedList.length > 0;
+    });
+    patientIds.sort(function(a,b){
+      var da = counts[a].trattamento + counts[a].valutazione;
+      var db = counts[b].trattamento + counts[b].valutazione;
+      if (db !== da) return db - da;
+      return patientName(a).localeCompare(patientName(b));
+    });
+
+    var html = '';
+    if (!patientIds.length){
+      html = '<div class="empty-state">Nessuna seduta registrata questo mese.</div>';
+    } else {
+      var totTratt = 0, totVal = 0;
+      patientIds.forEach(function(pid){
+        var c = counts[pid];
+        if (c.trattamento === 0 && c.valutazione === 0) return;
+        totTratt += c.trattamento; totVal += c.valutazione;
+        var loc = patientLocation(pid);
+        var dotColor = loc ? loc.color : '#C7CDC9';
+        var parts = [];
+        if (c.trattamento) parts.push(c.trattamento + (c.trattamento===1?' trattamento':' trattamenti'));
+        if (c.valutazione) parts.push(c.valutazione + (c.valutazione===1?' valutazione':' valutazioni'));
+        html += '<div class="summary-row"><span class="pname" style="display:flex;align-items:center;gap:7px;"><span class="loc-dot" style="background:'+dotColor+'"></span>'+escapeHtml(patientName(pid))+'</span><span class="pcount">'+parts.join(' · ')+'</span></div>';
+      });
+      html += '<div class="summary-total"><span>Totale</span><span>'+totTratt+' tratt. · '+totVal+' val.</span></div>';
+
+      var anyAbsence = patientIds.some(function(pid){ return counts[pid].skippedList.length > 0; });
+      if (anyAbsence){
+        html += '<div class="summary-section-title">Assenze segnalate (non conteggiate)</div>';
+        patientIds.forEach(function(pid){
+          counts[pid].skippedList.forEach(function(o){
+            html += '<div class="absence-row"><b>'+escapeHtml(patientName(pid))+'</b><span>'+formatDateShort(o.dateObj)+' · '+o.startTime+'</span></div>';
+          });
+        });
+      }
+    }
+    el.summaryList.innerHTML = html;
+  }
+
+  function renderSummaryByLocation(occ){
+    var byLoc = {};
+    occ.forEach(function(o){
+      if (o.skipped) return;
+      var loc = patientLocation(o.patientId);
+      var key = loc ? loc.id : '__none__';
+      if (!byLoc[key]) byLoc[key] = { sessions:0, patients:{} };
+      byLoc[key].sessions++;
+      byLoc[key].patients[o.patientId] = true;
+    });
+    var keys = Object.keys(byLoc);
+    keys.sort(function(a,b){ return byLoc[b].sessions - byLoc[a].sessions; });
+
+    var html = '';
+    if (!keys.length){
+      html = '<div class="empty-state">Nessuna seduta registrata questo mese.</div>';
+    } else {
+      var totSessions = 0, totPatients = 0;
+      keys.forEach(function(key){
+        var data = byLoc[key];
+        var loc = key === '__none__' ? null : getLocationById(key);
+        var name = loc ? loc.name : 'Senza luogo assegnato';
+        var color = loc ? loc.color : '#C7CDC9';
+        var pCount = Object.keys(data.patients).length;
+        totSessions += data.sessions; totPatients += pCount;
+        html += '<div class="summary-row"><span class="pname" style="display:flex;align-items:center;gap:7px;"><span class="loc-dot" style="background:'+color+'"></span>'+escapeHtml(name)+'</span><span class="pcount">'+data.sessions+' sedute · '+pCount+(pCount===1?' pz':' pz')+'</span></div>';
+      });
+      html += '<div class="summary-total"><span>Totale</span><span>'+totSessions+' sedute · '+totPatients+' pz</span></div>';
+    }
+    el.summaryList.innerHTML = html;
+  }
+  function formatDateShort(d){ return pad(d.getDate())+'/'+pad(d.getMonth()+1); }
+
+  // ---------- RENDER: PATIENTS ----------
+  function renderPatients(){
+    var q = (el.patientSearchInput.value || '').trim().toLowerCase();
+    var list = state.patients.slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
+    if (q) list = list.filter(function(p){ return p.name.toLowerCase().indexOf(q) !== -1; });
+    var html = '';
+    if (!list.length){
+      html = '<div class="empty-state">Nessun paziente trovato.</div>';
+    } else {
+      list.forEach(function(p){
+        var loc = p.locationId ? getLocationById(p.locationId) : null;
+        var ageLabel = patientAgeLabel(p.id);
+        html += '<div class="patient-row">'+
+                  '<div class="name-block">'+
+                    '<div class="name">'+escapeHtml(p.name)+(ageLabel?' <span class="appt-age">· '+ageLabel+'</span>':'')+'</div>'+
+                    '<div class="patient-loc-label"><span class="loc-dot" style="background:'+(loc?loc.color:'#C7CDC9')+'"></span>'+(loc?escapeHtml(loc.name):'Nessun luogo')+'</div>'+
+                  '</div>'+
+                  '<button class="small-btn" data-act="edit" data-id="'+p.id+'">Modifica</button>'+
+                  '<button class="small-btn danger" data-act="delete" data-id="'+p.id+'">Elimina</button>'+
+                '</div>';
+      });
+    }
+    html += '<div class="add-patient-row"><button id="addPatientBtn">+ Aggiungi paziente</button></div>';
+    html += '<div class="backup-section">'+
+              '<div class="backup-section-title">Backup dati</div>'+
+              '<div class="backup-row">'+
+                '<button type="button" id="exportBackupBtn">Esporta backup</button>'+
+                '<button type="button" id="importBackupBtn">Importa backup</button>'+
+              '</div>'+
+              '<input type="file" id="importBackupFile" accept="application/json" style="display:none;">'+
+            '</div>';
+    el.patientsList.innerHTML = html;
+
+    el.patientsList.querySelectorAll('[data-act="edit"]').forEach(function(b){
+      b.addEventListener('click', function(){
+        openPatientModal({ mode:'edit', patientId: b.getAttribute('data-id') });
+      });
+    });
+    el.patientsList.querySelectorAll('[data-act="delete"]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var id = b.getAttribute('data-id');
+        var p = state.patients.find(function(x){ return x.id === id; });
+        if (!confirm('Eliminare "'+p.name+'"? Verranno eliminati anche i suoi appuntamenti.')) return;
+        state.patients = state.patients.filter(function(x){ return x.id !== id; });
+        state.series = state.series.filter(function(s){ return s.patientId !== id; });
+        saveState(); renderPatients();
+      });
+    });
+    document.getElementById('addPatientBtn').addEventListener('click', function(){
+      openPatientModal({ mode:'create' });
+    });
+
+    document.getElementById('exportBackupBtn').addEventListener('click', exportBackup);
+    document.getElementById('importBackupBtn').addEventListener('click', function(){
+      document.getElementById('importBackupFile').click();
+    });
+    document.getElementById('importBackupFile').addEventListener('change', function(e){
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        importBackup(reader.result);
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  function exportBackup(){
+    var data = JSON.stringify(state, null, 2);
+    var blob = new Blob([data], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var today = todayDate();
+    a.href = url;
+    a.download = 'agenda-backup-' + toISO(today) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function importBackup(text){
+    var parsed;
+    try{ parsed = JSON.parse(text); }
+    catch(e){ alert('Il file scelto non è un backup valido.'); return; }
+    if (!parsed || !Array.isArray(parsed.patients) || !Array.isArray(parsed.series)){
+      alert('Il file scelto non è un backup valido.');
+      return;
+    }
+    if (!confirm('Importare questo backup sostituirà TUTTI i dati attuali (pazienti, appuntamenti, luoghi). Continuare?')) return;
+    state = {
+      patients: parsed.patients || [],
+      series: parsed.series || [],
+      exceptions: parsed.exceptions || {},
+      payments: parsed.payments || {},
+      locations: (parsed.locations && parsed.locations.length) ? parsed.locations : defaultLocations()
+    };
+    saveState();
+    renderPatients();
+    checkBirthdays();
+    alert('Backup importato correttamente.');
+  }
+  el.patientSearchInput.addEventListener('input', renderPatients);
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  // ---------- MODAL: NEW/EDIT PATIENT ----------
+  var patientModalMode = 'create';
+  var patientModalEditId = null;
+  var patientModalCallback = null;
+  var pmSelectedLocationId = null;
+  var pmNewLocColor = '#7C9885';
+  var SWATCH_COLORS = ['#C9A0DC','#F4A6C6','#F5D547','#DC5B52','#5FBBAE','#E8954E','#7C9885','#5B8DB8','#A98B73','#8E8E8E'];
+
+  function openPatientModal(opts){
+    opts = opts || {};
+    patientModalMode = opts.mode || 'create';
+    patientModalEditId = opts.patientId || null;
+    patientModalCallback = opts.onSaved || null;
+    el.newLocForm.style.display = 'none';
+    el.newLocName.value = '';
+
+    if (patientModalMode === 'edit'){
+      var p = state.patients.find(function(x){ return x.id === patientModalEditId; });
+      el.patientModalTitle.textContent = 'Modifica paziente';
+      el.patientNameInput.value = p ? p.name : '';
+      el.patientDobInput.value = (p && p.dob) ? p.dob : '';
+      pmSelectedLocationId = p ? (p.locationId || null) : null;
+    } else {
+      el.patientModalTitle.textContent = 'Nuovo paziente';
+      el.patientNameInput.value = opts.prefillName || '';
+      el.patientDobInput.value = '';
+      pmSelectedLocationId = null;
+    }
+    renderLocGrid();
+    el.patientOverlay.classList.add('open');
+    if (!opts.prefillName) el.patientNameInput.focus();
+  }
+  function closePatientModal(){ el.patientOverlay.classList.remove('open'); }
+  el.patientModalClose.addEventListener('click', closePatientModal);
+  el.patientOverlay.addEventListener('click', function(e){ if (e.target === el.patientOverlay) closePatientModal(); });
+
+  function renderLocGrid(){
+    var html = '';
+    state.locations.forEach(function(loc){
+      var txt = getContrastColor(loc.color);
+      var sel = (loc.id === pmSelectedLocationId) ? ' selected' : '';
+      html += '<button type="button" class="loc-chip'+sel+'" data-id="'+loc.id+'" style="background:'+loc.color+';color:'+txt+';">'+escapeHtml(loc.name)+'</button>';
+    });
+    html += '<button type="button" class="loc-chip loc-chip-new" id="newLocToggleBtn">+ Nuovo luogo</button>';
+    el.locGrid.innerHTML = html;
+    el.locGrid.querySelectorAll('.loc-chip[data-id]').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        pmSelectedLocationId = chip.getAttribute('data-id');
+        el.newLocForm.style.display = 'none';
+        renderLocGrid();
+      });
+    });
+    document.getElementById('newLocToggleBtn').addEventListener('click', function(){
+      var isOpen = el.newLocForm.style.display !== 'none';
+      el.newLocForm.style.display = isOpen ? 'none' : 'block';
+      if (!isOpen) renderColorSwatches();
+    });
+  }
+  function renderColorSwatches(){
+    var html = '';
+    SWATCH_COLORS.forEach(function(c){
+      var sel = (c.toLowerCase() === pmNewLocColor.toLowerCase()) ? ' selected' : '';
+      html += '<button type="button" class="color-swatch'+sel+'" data-color="'+c+'" style="background:'+c+';"></button>';
+    });
+    el.colorSwatches.innerHTML = html;
+    el.newLocColorCustom.value = pmNewLocColor;
+    el.colorSwatches.querySelectorAll('.color-swatch').forEach(function(sw){
+      sw.addEventListener('click', function(){
+        pmNewLocColor = sw.getAttribute('data-color');
+        el.newLocColorCustom.value = pmNewLocColor;
+        renderColorSwatches();
+      });
+    });
+  }
+  el.newLocColorCustom.addEventListener('input', function(){
+    pmNewLocColor = el.newLocColorCustom.value;
+  });
+  el.addLocConfirmBtn.addEventListener('click', function(){
+    var name = el.newLocName.value.trim();
+    if (!name){ alert('Dai un nome al nuovo luogo.'); return; }
+    var loc = { id: uid('loc'), name: name, color: pmNewLocColor };
+    state.locations.push(loc);
+    saveState();
+    pmSelectedLocationId = loc.id;
+    el.newLocForm.style.display = 'none';
+    renderLocGrid();
+  });
+
+  el.savePatientBtn.addEventListener('click', function(){
+    var name = el.patientNameInput.value.trim();
+    if (!name){ alert('Inserisci il nome del paziente.'); return; }
+    var dob = el.patientDobInput.value || null;
+    if (patientModalMode === 'edit' && patientModalEditId){
+      var p = state.patients.find(function(x){ return x.id === patientModalEditId; });
+      p.name = name; p.locationId = pmSelectedLocationId; p.dob = dob;
+      saveState(); closePatientModal(); renderPatients();
+    } else {
+      var np = { id: uid('pat'), name: name, locationId: pmSelectedLocationId, dob: dob };
+      state.patients.push(np);
+      saveState(); closePatientModal();
+      if (activeTab === 'patients') renderPatients();
+      if (patientModalCallback) patientModalCallback(np.id);
+    }
+  });
+
+  // ---------- MODAL: ADD/EDIT APPOINTMENT ----------
+  var currentRecurrence = 'none';
+  var currentSessionType = 'trattamento';
+
+  function openAddModal(dateObj){
+    editingSeriesId = null; editingDate = null; pickedPatientId = null;
+    el.apptModalTitle.textContent = 'Nuovo appuntamento';
+    el.patientInput.value = '';
+    el.apptDate.value = toISO(dateObj || (agendaView==='day' ? agendaFocus : todayDate()));
+    el.apptStart.value = '09:00';
+    el.apptEnd.value = '09:45';
+    el.apptNotes.value = '';
+    setRecurrence('none');
+    setSessionType('trattamento');
+    el.recurrenceEndSelect.value = 'endOfMonth';
+    el.recurrenceEndDate.style.display = 'none';
+    el.editHintBox.style.display = 'none';
+    el.editActions.style.display = 'none';
+    el.suggestStrip.classList.remove('open');
+    el.patientSuggestions.classList.remove('open');
+    updateWeekdayHint();
+    el.apptOverlay.classList.add('open');
+  }
+
+  function openEditModal(seriesId, dateIso){
+    var s = state.series.find(function(x){ return x.id === seriesId; });
+    if (!s) return;
+    editingSeriesId = seriesId; editingDate = dateIso; pickedPatientId = s.patientId;
+    el.apptModalTitle.textContent = 'Modifica appuntamento';
+    el.patientInput.value = patientName(s.patientId);
+    el.apptDate.value = s.startDate;
+    el.apptStart.value = s.startTime;
+    el.apptEnd.value = s.endTime;
+    el.apptNotes.value = s.notes || '';
+    setRecurrence(s.recurrence);
+    setSessionType(s.sessionType || 'trattamento');
+    if (s.recurrence === 'weekly'){
+      if (s.recurrenceEnd === 'endOfMonth' || s.recurrenceEnd === 'none'){
+        el.recurrenceEndSelect.value = s.recurrenceEnd;
+        el.recurrenceEndDate.style.display = 'none';
+      } else {
+        el.recurrenceEndSelect.value = 'custom';
+        el.recurrenceEndDate.style.display = 'block';
+        el.recurrenceEndDate.value = s.recurrenceEnd;
+      }
+    }
+    el.editHintBox.style.display = 'block';
+    el.editActions.style.display = 'flex';
+    el.deleteSeriesBtn.style.display = (s.recurrence === 'weekly') ? 'block' : 'none';
+    el.stopRecurrenceBtn.style.display = (s.recurrence === 'weekly') ? 'block' : 'none';
+
+    var key = seriesId + '_' + dateIso;
+    var exc = state.exceptions[key];
+    var isSkipped = !!(exc && exc.status === 'skipped');
+    el.toggleSkipBtn.textContent = isSkipped ? 'Segna come svolto' : 'Segna come non venuto';
+    var isCash = (state.payments[key] === 'contanti');
+    el.togglePaymentBtn.textContent = isCash ? 'Segna come da fatturare' : 'Segna come pagato in contanti';
+
+    el.suggestStrip.classList.remove('open');
+    el.patientSuggestions.classList.remove('open');
+    updateWeekdayHint();
+    el.apptOverlay.classList.add('open');
+  }
+
+  function closeModal(){ el.apptOverlay.classList.remove('open'); }
+  el.apptModalClose.addEventListener('click', closeModal);
+  el.apptOverlay.addEventListener('click', function(e){ if (e.target === el.apptOverlay) closeModal(); });
+  el.fabAdd.addEventListener('click', function(){ openAddModal(); });
+
+  function setRecurrence(val){
+    currentRecurrence = val;
+    el.recurrenceSeg.querySelectorAll('.seg-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-val') === val);
+    });
+    el.recurrenceEndField.style.display = (val === 'weekly') ? 'block' : 'none';
+  }
+  el.recurrenceSeg.querySelectorAll('.seg-btn').forEach(function(b){
+    b.addEventListener('click', function(){ setRecurrence(b.getAttribute('data-val')); });
+  });
+  function setSessionType(val){
+    currentSessionType = val;
+    el.sessionTypeSeg.querySelectorAll('.seg-btn').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-val') === val);
+    });
+  }
+  el.sessionTypeSeg.querySelectorAll('.seg-btn').forEach(function(b){
+    b.addEventListener('click', function(){ setSessionType(b.getAttribute('data-val')); });
+  });
+  el.recurrenceEndSelect.addEventListener('change', function(){
+    el.recurrenceEndDate.style.display = (el.recurrenceEndSelect.value === 'custom') ? 'block' : 'none';
+  });
+  el.apptDate.addEventListener('change', updateWeekdayHint);
+  function updateWeekdayHint(){
+    if (!el.apptDate.value){ el.weekdayHint.textContent=''; return; }
+    var d = parseISO(el.apptDate.value);
+    el.weekdayHint.textContent = 'Con "Ogni settimana" si ripete ogni ' + WEEKDAY_NAMES[d.getDay()] + '.';
+  }
+
+  // quick durations
+  document.querySelectorAll('.quick-durations button').forEach(function(b){
+    b.addEventListener('click', function(){
+      if (!el.apptStart.value) return;
+      var mins = parseInt(b.getAttribute('data-min'), 10);
+      var parts = el.apptStart.value.split(':').map(Number);
+      var d = new Date(2000,0,1,parts[0],parts[1]);
+      d.setMinutes(d.getMinutes()+mins);
+      el.apptEnd.value = pad(d.getHours())+':'+pad(d.getMinutes());
+    });
+  });
+
+  // patient autocomplete
+  el.patientInput.addEventListener('input', function(){
+    pickedPatientId = null;
+    var q = el.patientInput.value.trim().toLowerCase();
+    el.suggestStrip.classList.remove('open');
+    if (!q){ el.patientSuggestions.classList.remove('open'); el.patientSuggestions.innerHTML=''; return; }
+    var matches = state.patients.filter(function(p){ return p.name.toLowerCase().indexOf(q) !== -1; }).slice(0,6);
+    var exact = state.patients.some(function(p){ return p.name.toLowerCase() === q; });
+    var html = '';
+    matches.forEach(function(p){
+      html += '<div class="suggestion-item" data-id="'+p.id+'">'+escapeHtml(p.name)+'</div>';
+    });
+    if (!exact){
+      html += '<div class="suggestion-item new" data-new="1">+ Aggiungi «'+escapeHtml(el.patientInput.value.trim())+'» come nuovo paziente</div>';
+    }
+    el.patientSuggestions.innerHTML = html;
+    el.patientSuggestions.classList.add('open');
+    el.patientSuggestions.querySelectorAll('.suggestion-item').forEach(function(item){
+      item.addEventListener('click', function(){
+        if (item.getAttribute('data-new')){
+          var typedName = el.patientInput.value.trim();
+          el.patientSuggestions.classList.remove('open');
+          openPatientModal({ mode:'create', prefillName: typedName, onSaved: function(newId){
+            pickedPatientId = newId;
+            el.patientInput.value = patientName(newId);
+            updateSuggestStrip();
+          }});
+        } else {
+          pickedPatientId = item.getAttribute('data-id');
+          el.patientInput.value = patientName(pickedPatientId);
+          el.patientSuggestions.classList.remove('open');
+          updateSuggestStrip();
+        }
+      });
+    });
+  });
+  function updateSuggestStrip(){
+    if (!pickedPatientId){ el.suggestStrip.classList.remove('open'); return; }
+    var candidates = state.series.filter(function(s){ return s.patientId === pickedPatientId && s.id !== editingSeriesId; });
+    if (!candidates.length){ el.suggestStrip.classList.remove('open'); return; }
+    candidates.sort(function(a,b){ return b.startDate.localeCompare(a.startDate); });
+    var last = candidates[0];
+    el.suggestStripText.textContent = 'Orario abituale: ' + last.startTime + '–' + last.endTime;
+    el.suggestStrip.setAttribute('data-start', last.startTime);
+    el.suggestStrip.setAttribute('data-end', last.endTime);
+    el.suggestStrip.classList.add('open');
+  }
+  el.suggestStripUse.addEventListener('click', function(){
+    el.apptStart.value = el.suggestStrip.getAttribute('data-start');
+    el.apptEnd.value = el.suggestStrip.getAttribute('data-end');
+  });
+
+  // save
+  el.apptSaveBtn.addEventListener('click', function(){
+    var typedName = el.patientInput.value.trim();
+    if (!typedName){ alert('Seleziona o inserisci un paziente.'); return; }
+    var patientId = pickedPatientId;
+    if (!patientId){
+      var existing = state.patients.find(function(p){ return p.name.toLowerCase() === typedName.toLowerCase(); });
+      if (existing) patientId = existing.id;
+    }
+    if (!patientId){
+      openPatientModal({ mode:'create', prefillName: typedName, onSaved: function(newId){
+        finalizeApptSave(newId);
+      }});
+      return;
+    }
+    finalizeApptSave(patientId);
+  });
+
+  function finalizeApptSave(patientId){
+    var dateVal = el.apptDate.value, startTime = el.apptStart.value, endTime = el.apptEnd.value;
+    if (!dateVal || !startTime || !endTime){ alert('Compila data e orario.'); return; }
+    if (timeToMinutes(endTime) <= timeToMinutes(startTime)){ alert('L\'orario di fine deve essere dopo l\'orario di inizio.'); return; }
+    var recurrenceEnd = null;
+    if (currentRecurrence === 'weekly'){
+      var sel = el.recurrenceEndSelect.value;
+      recurrenceEnd = (sel === 'custom') ? el.recurrenceEndDate.value : sel;
+      if (sel === 'custom' && !recurrenceEnd){ alert('Scegli una data di fine.'); return; }
+    }
+    var notes = el.apptNotes.value.trim();
+
+    var candidate = {
+      patientId: patientId, startDate: dateVal, startTime: startTime, endTime: endTime,
+      notes: notes, recurrence: currentRecurrence, recurrenceEnd: recurrenceEnd, sessionType: currentSessionType
+    };
+
+    var conflict = findConflict(candidate, editingSeriesId);
+    if (conflict){
+      alert('Orario non disponibile: il '+formatDateShort(parseISO(conflict.date))+' dalle '+conflict.otherStart+' alle '+conflict.otherEnd+' c\'è già '+patientName(conflict.otherPatientId)+'. Scegli un altro orario.');
+      return;
+    }
+
+    if (editingSeriesId){
+      var s = state.series.find(function(x){ return x.id === editingSeriesId; });
+      s.patientId = candidate.patientId; s.startDate = candidate.startDate; s.startTime = candidate.startTime;
+      s.endTime = candidate.endTime; s.notes = candidate.notes; s.recurrence = candidate.recurrence;
+      s.recurrenceEnd = candidate.recurrenceEnd; s.sessionType = candidate.sessionType;
+    } else {
+      candidate.id = uid('ser');
+      state.series.push(candidate);
+    }
+    saveState();
+    closeModal();
+    if (activeTab === 'agenda') renderAgenda();
+  }
+
+  // skip toggle / delete
+  el.toggleSkipBtn.addEventListener('click', function(){
+    if (!editingSeriesId || !editingDate) return;
+    var key = editingSeriesId + '_' + editingDate;
+    var exc = state.exceptions[key];
+    if (exc && exc.status === 'skipped') delete state.exceptions[key];
+    else state.exceptions[key] = { status: 'skipped' };
+    saveState(); closeModal();
+    if (activeTab === 'agenda') renderAgenda();
+  });
+  el.togglePaymentBtn.addEventListener('click', function(){
+    if (!editingSeriesId || !editingDate) return;
+    var key = editingSeriesId + '_' + editingDate;
+    if (state.payments[key] === 'contanti') delete state.payments[key];
+    else state.payments[key] = 'contanti';
+    saveState(); closeModal();
+    if (activeTab === 'agenda') renderAgenda();
+  });
+  el.deleteOccurrenceBtn.addEventListener('click', function(){
+    if (!editingSeriesId || !editingDate) return;
+    var s = state.series.find(function(x){ return x.id === editingSeriesId; });
+    if (!s) return;
+    if (s.recurrence === 'none'){
+      if (!confirm('Eliminare questo appuntamento?')) return;
+      state.series = state.series.filter(function(x){ return x.id !== editingSeriesId; });
+    } else {
+      if (!confirm('Eliminare solo questa data dalla serie?')) return;
+      state.exceptions[editingSeriesId+'_'+editingDate] = { status: 'deleted' };
+    }
+    saveState(); closeModal();
+    if (activeTab === 'agenda') renderAgenda();
+  });
+  el.stopRecurrenceBtn.addEventListener('click', function(){
+    if (!editingSeriesId || !editingDate) return;
+    var s = state.series.find(function(x){ return x.id === editingSeriesId; });
+    if (!s) return;
+    if (!confirm('Da questa data in poi non verranno più generati appuntamenti per questa serie. Tutte le sedute precedenti (comprese quelle di questa data) restano registrate. Continuare?')) return;
+    s.recurrenceEnd = editingDate;
+    saveState(); closeModal();
+    if (activeTab === 'agenda') renderAgenda();
+  });
+  el.deleteSeriesBtn.addEventListener('click', function(){
+    if (!editingSeriesId) return;
+    if (!confirm('Eliminare l\'intera serie ricorrente? Verranno rimosse ANCHE le sedute passate di questa serie dai riepiloghi mensili. Se il paziente ha solo smesso di venire, usa invece "Interrompi da questa data".')) return;
+    state.series = state.series.filter(function(x){ return x.id !== editingSeriesId; });
+    Object.keys(state.exceptions).forEach(function(k){
+      if (k.indexOf(editingSeriesId+'_') === 0) delete state.exceptions[k];
+    });
+    Object.keys(state.payments).forEach(function(k){
+      if (k.indexOf(editingSeriesId+'_') === 0) delete state.payments[k];
+    });
+    saveState(); closeModal();
+    if (activeTab === 'agenda') renderAgenda();
+  });
+
+  // ---------- DUPLICATE APPOINTMENT ----------
+  var duplicateSourceSeries = null;
+  var dupFocus = todayDate();
+  var dupSelectedDates = {};
+
+  el.duplicateBtn.addEventListener('click', function(){
+    if (!editingSeriesId) return;
+    var s = state.series.find(function(x){ return x.id === editingSeriesId; });
+    if (!s) return;
+    duplicateSourceSeries = s;
+    dupSelectedDates = {};
+    dupFocus = editingDate ? parseISO(editingDate) : parseISO(s.startDate);
+    var typeLabel = (s.sessionType === 'valutazione') ? ' · valutazione' : '';
+    el.duplicateInfoBox.textContent = 'Stai duplicando: ' + patientName(s.patientId) + ', ' + s.startTime + '–' + s.endTime + typeLabel;
+    renderDupMonth();
+    el.duplicateOverlay.classList.add('open');
+  });
+  function closeDuplicateModal(){ el.duplicateOverlay.classList.remove('open'); }
+  el.duplicateModalClose.addEventListener('click', closeDuplicateModal);
+  el.duplicateOverlay.addEventListener('click', function(e){ if (e.target === el.duplicateOverlay) closeDuplicateModal(); });
+
+  el.dupPrevBtn.addEventListener('click', function(){
+    dupFocus = new Date(dupFocus.getFullYear(), dupFocus.getMonth()-1, 1);
+    renderDupMonth();
+  });
+  el.dupNextBtn.addEventListener('click', function(){
+    dupFocus = new Date(dupFocus.getFullYear(), dupFocus.getMonth()+1, 1);
+    renderDupMonth();
+  });
+
+  function renderDupMonth(){
+    var y = dupFocus.getFullYear(), m = dupFocus.getMonth();
+    el.dupPeriodLabel.textContent = MONTH_NAMES[m] + ' ' + y;
+    var first = new Date(y, m, 1);
+    var gridStart = startOfWeek(first);
+    var last = endOfMonth(first);
+    var gridEnd = addDays(startOfWeek(last), 6);
+    var occ = allOccurrencesInRange(gridStart, gridEnd);
+    var byDate = {};
+    occ.forEach(function(o){ (byDate[o.date] = byDate[o.date] || []).push(o); });
+    var today = todayDate();
+
+    var html = '';
+    var cursor = new Date(gridStart);
+    while (cursor <= gridEnd){
+      var iso = toISO(cursor);
+      var isOutside = cursor.getMonth() !== m;
+      var isToday = sameDate(cursor, today);
+      var isSelected = !!dupSelectedDates[iso];
+      var dayOcc = byDate[iso] || [];
+      var dotsHtml = '';
+      dayOcc.slice(0,4).forEach(function(o){
+        var loc = patientLocation(o.patientId);
+        var col = o.skipped ? 'var(--warn)' : (loc ? loc.color : 'var(--accent)');
+        dotsHtml += '<span class="dot" style="background:'+col+'"></span>';
+      });
+      html += '<div class="day-cell'+(isOutside?' outside':'')+(isToday?' today':'')+(isSelected?' selected':'')+'" data-date="'+iso+'">'+
+                '<div class="num">'+cursor.getDate()+'</div>'+
+                '<div class="dots">'+dotsHtml+'</div>'+
+              '</div>';
+      cursor = addDays(cursor, 1);
+    }
+    el.dupMonthGrid.innerHTML = html;
+    el.dupMonthGrid.querySelectorAll('.day-cell').forEach(function(cell){
+      cell.addEventListener('click', function(){
+        var iso = cell.getAttribute('data-date');
+        if (dupSelectedDates[iso]) delete dupSelectedDates[iso];
+        else dupSelectedDates[iso] = true;
+        cell.classList.toggle('selected');
+      });
+    });
+  }
+
+  el.dupConfirmBtn.addEventListener('click', function(){
+    var dates = Object.keys(dupSelectedDates);
+    if (!dates.length){ alert('Seleziona almeno un giorno.'); return; }
+    if (!duplicateSourceSeries) return;
+    var s = duplicateSourceSeries;
+    var created = 0;
+    var conflictDates = [];
+    dates.sort();
+    dates.forEach(function(iso){
+      var candidate = {
+        patientId: s.patientId, startDate: iso, startTime: s.startTime, endTime: s.endTime,
+        notes: s.notes, recurrence: 'none', recurrenceEnd: null, sessionType: s.sessionType || 'trattamento'
+      };
+      var conflict = findConflict(candidate, null);
+      if (conflict){
+        conflictDates.push(formatDateShort(parseISO(iso)));
+      } else {
+        candidate.id = uid('ser');
+        state.series.push(candidate);
+        created++;
+      }
+    });
+    if (created > 0) saveState();
+    closeDuplicateModal();
+    closeModal();
+    if (activeTab === 'agenda') renderAgenda();
+    var msg = 'Duplicato su ' + created + (created === 1 ? ' giorno.' : ' giorni.');
+    if (conflictDates.length) msg += ' Saltati per sovrapposizione oraria: ' + conflictDates.join(', ') + '.';
+    alert(msg);
+  });
+
+
+  function todaysBirthdays(){
+    var t = todayDate();
+    return state.patients.filter(function(p){
+      if (!p.dob) return false;
+      var d = parseISO(p.dob);
+      return d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
+    });
+  }
+  function checkBirthdays(){
+    var list = todaysBirthdays();
+    if (!list.length){ el.birthdayBanner.style.display = 'none'; return; }
+    var names = list.map(function(p){
+      var a = ageYearsMonths(p.dob, todayDate());
+      return escapeHtml(p.name) + (a ? ' (' + a.years + ' anni)' : '');
+    }).join(', ');
+    var label = (list.length === 1 ? '🎂 Oggi compie gli anni: ' : '🎂 Oggi compiono gli anni: ');
+    el.birthdayBanner.innerHTML = '<span>'+label+'<b>'+names+'</b></span><button type="button" id="birthdayDismissBtn" aria-label="Chiudi">&times;</button>';
+    el.birthdayBanner.style.display = 'flex';
+    document.getElementById('birthdayDismissBtn').addEventListener('click', function(){
+      el.birthdayBanner.style.display = 'none';
+    });
+  }
+
+  // ---------- KEYBOARD-AWARE MODAL SIZING ----------
+  // On iOS, opening the on-screen keyboard shrinks the visual viewport without resizing
+  // fixed-position elements, so a bottom sheet anchored with inset:0 can end up partly
+  // hidden behind the keyboard or leave a dead gap below it. Keeping the overlay's height
+  // and top offset in sync with window.visualViewport fixes both.
+  function setupKeyboardAdjust(){
+    if (!window.visualViewport) return;
+    var overlays = document.querySelectorAll('.overlay');
+    function adjust(){
+      var vv = window.visualViewport;
+      overlays.forEach(function(ov){
+        ov.style.height = vv.height + 'px';
+        ov.style.top = vv.offsetTop + 'px';
+      });
+    }
+    window.visualViewport.addEventListener('resize', adjust);
+    window.visualViewport.addEventListener('scroll', adjust);
+    adjust();
+  }
+  setupKeyboardAdjust();
+
+  // ---------- INIT ----------
+  showTab('agenda');
+  checkBirthdays();
+})();
+</script>
+</body>
+</html>
